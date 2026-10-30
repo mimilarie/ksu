@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KSU Career Exploration</title>
+<style>
+  :root{--bg:#6a1b9a;--card:#4a0d66;--card2:#3b0a52;--gold:#f6c94a;--ink:#fff;--mute:#d9c3e8;--ok:#5ee3a1}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Salesforce Sans",system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+  header{display:flex;justify-content:space-between;align-items:center;padding:20px 32px;flex-wrap:wrap;gap:12px}
+  h1{margin:0;font-size:2rem}
+  .tag{display:inline-block;background:var(--gold);color:#3b0a52;font-weight:700;padding:2px 8px;font-size:.8rem;border-radius:3px}
+  .sub{color:var(--mute);margin-top:4px}
+  main{padding:0 32px 32px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:1000px){main{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid #7b2aa5;border-radius:14px;padding:18px}
+  .panel h2{margin:0 0 12px;font-size:1.2rem;color:var(--gold)}
+  .full{grid-column:1/-1}
+  .timer{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .clock{font-size:4rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--gold);min-width:190px}
+  .clock.low{color:#ff7a8a}
+  button{background:var(--gold);color:#3b0a52;border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:.95rem}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--mute)}
+  button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:2px}
+  .lb{display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;align-items:center;gap:12px;background:var(--card2);padding:10px 14px;border-radius:10px}
+  .rank{width:34px;height:34px;border-radius:50%;background:var(--gold);color:#3b0a52;font-weight:800;display:grid;place-items:center;flex:none}
+  .row .name{flex:1;font-weight:600}
+  .bar{flex:2;height:10px;background:#2a0640;border-radius:5px;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#ffe39a);transition:width .4s}
+  .pts{font-size:1.4rem;font-weight:800;min-width:64px;text-align:right}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px;text-align:center;border-bottom:1px solid #6a1b9a}
+  th:first-child,td:first-child{text-align:left}
+  th input{background:transparent;border:0;border-bottom:1px dashed var(--mute);color:var(--gold);font-weight:700;width:100%;text-align:center;font-size:.95rem}
+  td small{color:var(--mute);display:block}
+  .chk{appearance:none;width:28px;height:28px;border:2px solid var(--mute);border-radius:6px;background:transparent;cursor:pointer;vertical-align:middle}
+  .chk:checked{background:var(--ok);border-color:var(--ok)}
+  .chk:checked::after{content:"✓";color:#063;font-weight:900;display:grid;place-items:center;height:100%}
+  tfoot td{font-weight:800;color:var(--gold);font-size:1.1rem}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  .controls label{color:var(--mute)}
+  .controls input[type=number]{width:60px;padding:6px;border-radius:6px;border:0}
+  .tasks{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:700px){.tasks{grid-template-columns:1fr}}
+  .task{display:flex;gap:10px;background:var(--card2);border-radius:10px;padding:10px}
+  .num{width:30px;height:30px;border-radius:50%;background:var(--gold);color:#3b0a52;font-weight:800;display:grid;place-items:center;flex:none}
+  .task b span{color:var(--gold);font-weight:400}
+  .task p{margin:2px 0 0;color:var(--mute);font-size:.9rem}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <span class="tag">3-Minute Challenge</span>
+    <h1>KSU Career Exploration</h1>
+    <div class="sub">10 Rapid Tasks · Kennesaw State University × Salesforce Women's Network</div>
+  </div>
+  <div class="timer" role="timer" aria-live="off">
+    <div class="clock" id="clock">3:00</div>
+    <button id="start">Start</button>
+    <button class="ghost" id="reset">Reset</button>
+  </div>
+</header>
+
+<main>
+  <section class="panel" aria-labelledby="lbh">
+    <h2 id="lbh">Leaderboard</h2>
+    <div class="lb" id="lb"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="th">
+    <h2 id="th">Tasks (<span id="maxpts"></span> pts possible)</h2>
+    <div class="tasks" id="tasks"></div>
+  </section>
+
+  <section class="panel full" aria-labelledby="sh">
+    <h2 id="sh">Scoring — check a box when a team completes a task</h2>
+    <div style="overflow-x:auto"><table id="grid"></table></div>
+    <div class="controls">
+      <label for="tc">Teams</label>
+      <input id="tc" type="number" min="2" max="12">
+      <span class="sub" id="split"></span>
+      <button class="ghost" id="clear">Clear all scores</button>
+    </div>
+  </section>
+</main>
+
+<script>
+const PLAYERS = 25;
+const TASKS = [
+  ["The Quick Math",2,"~10 sec","Calculate: 14 X 6 - 19. Write the final answer on your paper."],
+  ["Table Signature",3,"~15 sec","Have every person sign their name on a single sheet of paper in alphabetical order by first name."],
+  ["Coffee Rhyme",5,"~30 sec","Write an original 4-line rhyming poem about coffee or morning energy."],
+  ["High-Five Chain",5,"~15 sec","Have every team member high-five the person to their left while loudly shouting their team's favorite food."],
+  ["Paper Airplane",10,"~45 sec","Fold a paper airplane and throw it so it lands completely across your table without falling off."],
+  ["The Common Thread",15,"~45 sec","Discover and write down three non-obvious things that every single person at your table has in common."],
+  ["Card Tower",15,"~45 sec","Build a free-standing structure using at least 5 business or index cards that stays upright for 5 seconds."],
+  ["Acronym Creation",20,"~60 sec","Create a memorable acronym using the letters S-P-R-I-N-T that explains why time management matters."],
+  ["Origami Crane",25,"~90 sec","Create a functional paper crane from a blank piece of paper."],
+  ["The Speed Pitch",30,"~90 sec","Design a 15-second elevator pitch for \"The Anti-Gravity Pen\" and perform it live for the facilitator."]
+];
+const KEY="ksu-career-exploration-v1";
+let S = JSON.parse(localStorage.getItem(KEY)||"null") || {n:5,names:[],done:{}};
+const save=()=>localStorage.setItem(KEY,JSON.stringify(S));
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const MAX=TASKS.reduce((a,t)=>a+t[1],0);
+$("maxpts").textContent=MAX;
+
+function teamName(i){return S.names[i]||("Team "+(i+1))}
+function score(i){return TASKS.reduce((a,t,k)=>a+(S.done[i+"-"+k]?t[1]:0),0)}
+
+function render(){
+  $("tc").value=S.n;
+  const base=Math.floor(PLAYERS/S.n), extra=PLAYERS%S.n;
+  $("split").textContent=`${PLAYERS} participants → ${extra?`${extra} team(s) of ${base+1}, ${S.n-extra} of ${base}`:`${S.n} teams of ${base}`}`;
+
+  $("tasks").innerHTML=TASKS.map((t,i)=>`<div class="task"><div class="num">${i+1}</div><div><b>${t[0]} <span>[${t[1]} pts] · ${t[2]}</span></b><p>${t[3]}</p></div></div>`).join("");
+
+  const order=[...Array(S.n).keys()].sort((a,b)=>score(b)-score(a));
+  $("lb").innerHTML=order.map((i,r)=>`<div class="row"><div class="rank">${r+1}</div><div class="name">${esc(teamName(i))}</div><div class="bar"><i style="width:${score(i)/MAX*100}%"></i></div><div class="pts">${score(i)}</div></div>`).join("");
+
+  let h=`<thead><tr><th scope="col">Task</th>`;
+  for(let i=0;i<S.n;i++)h+=`<th scope="col"><input aria-label="Team ${i+1} name" value="${esc(teamName(i))}" data-name="${i}"></th>`;
+  h+=`</tr></thead><tbody>`;
+  TASKS.forEach((t,k)=>{
+    h+=`<tr><td>${k+1}. ${t[0]}<small>${t[1]} pts</small></td>`;
+    for(let i=0;i<S.n;i++)h+=`<td><input type="checkbox" class="chk" aria-label="${esc(teamName(i))} completed ${t[0]}" data-i="${i}" data-k="${k}" ${S.done[i+"-"+k]?"checked":""}></td>`;
+    h+=`</tr>`;
+  });
+  h+=`</tbody><tfoot><tr><td>Total</td>`;
+  for(let i=0;i<S.n;i++)h+=`<td>${score(i)}</td>`;
+  h+=`</tr></tfoot>`;
+  $("grid").innerHTML=h;
+}
+
+$("grid").addEventListener("change",e=>{
+  const t=e.target;
+  if(t.dataset.name!==undefined){S.names[+t.dataset.name]=t.value.trim();save();renderBoardOnly();return}
+  if(t.dataset.k!==undefined){S.done[t.dataset.i+"-"+t.dataset.k]=t.checked;save();render()}
+});
+function renderBoardOnly(){render()}
+$("tc").addEventListener("change",e=>{S.n=Math.max(2,Math.min(12,+e.target.value||5));save();render()});
+$("clear").onclick=()=>{if(confirm("Clear all scores?")){S.done={};save();render()}};
+
+// Timer
+let left=180,iv=null;
+const draw=()=>{const c=$("clock");c.textContent=Math.floor(left/60)+":"+String(left%60).padStart(2,"0");c.classList.toggle("low",left<=30&&left>0)};
+function beep(){try{const a=new AudioContext(),o=a.createOscillator();o.connect(a.destination);o.frequency.value=880;o.start();setTimeout(()=>{o.stop();a.close()},600)}catch(e){}}
+$("start").onclick=()=>{
+  if(iv){clearInterval(iv);iv=null;$("start").textContent="Resume";return}
+  if(left<=0)left=180;
+  $("start").textContent="Pause";
+  iv=setInterval(()=>{left--;draw();if(left<=0){clearInterval(iv);iv=null;$("start").textContent="Start";beep()}},1000);
+};
+$("reset").onclick=()=>{clearInterval(iv);iv=null;left=180;draw();$("start").textContent="Start"};
+
+draw();render();
+</script>
+</body>
+</html>
